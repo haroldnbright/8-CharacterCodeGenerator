@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>8-character code generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #E9EEF1;
+    --surface: #FFFFFF;
+    --ink: #1B2A36;
+    --muted: #5B6B78;
+    --line: #CBD5DC;
+    --tile: #1B2A36;
+    --tile-ink: #F3F7FA;
+    --accent: #1F6F5C;
+    --accent-ink: #FFFFFF;
+    --ok: #1F6F5C;
+    --bad: #B03A2E;
+    --focus: #2E7BC4;
+    color-scheme: light;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121A21;
+      --surface: #1A242D;
+      --ink: #E4EBF0;
+      --muted: #93A3AF;
+      --line: #2E3C48;
+      --tile: #E4EBF0;
+      --tile-ink: #121A21;
+      --accent: #4FB89C;
+      --accent-ink: #0E1A16;
+      --ok: #4FB89C;
+      --bad: #E57B6F;
+      --focus: #6AAEE8;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121A21;
+    --surface: #1A242D;
+    --ink: #E4EBF0;
+    --muted: #93A3AF;
+    --line: #2E3C48;
+    --tile: #E4EBF0;
+    --tile-ink: #121A21;
+    --accent: #4FB89C;
+    --accent-ink: #0E1A16;
+    --ok: #4FB89C;
+    --bad: #E57B6F;
+    --focus: #6AAEE8;
+    color-scheme: dark;
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  main {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 40px 20px 64px;
+  }
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  .lede { color: var(--muted); margin: 0 0 32px; max-width: 64ch; }
+  .hint { color: var(--muted); font-size: 0.9rem; margin: 0 0 16px; max-width: 64ch; }
+
+  section {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  section.hero { padding: 32px 24px; }
+
+  .tiles {
+    display: flex;
+    gap: 6px;
+    margin: 20px 0 24px;
+    flex-wrap: nowrap;
+  }
+  .tile {
+    flex: 1 1 0;
+    max-width: 72px;
+    aspect-ratio: 3 / 4;
+    background: var(--tile);
+    color: var(--tile-ink);
+    border-radius: 4px;
+    display: grid;
+    place-items: center;
+    font-family: "JetBrains Mono", Consolas, "Courier New", monospace;
+    font-weight: 700;
+    font-size: clamp(1.25rem, 5vw, 2.25rem);
+    transition: transform 160ms ease;
+  }
+  .tile.flip { transform: translateY(-4px); }
+
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 4px; }
+  input {
+    font: inherit;
+    color: var(--ink);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 9px 12px;
+    min-width: 0;
+  }
+  input.mono { font-family: "JetBrains Mono", Consolas, monospace; letter-spacing: 0.04em; }
+  .field { flex: 1 1 180px; }
+  .field input { width: 100%; }
+
+  button {
+    font: inherit;
+    font-weight: 500;
+    border-radius: 4px;
+    padding: 9px 16px;
+    cursor: pointer;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+  }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button:disabled { opacity: 0.55; cursor: default; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  .result {
+    margin-top: 14px;
+    font-size: 0.95rem;
+    min-height: 1.5em;
+  }
+  .result.ok { color: var(--ok); }
+  .result.bad { color: var(--bad); }
+  .result strong { font-family: "JetBrains Mono", Consolas, monospace; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid2 section { margin-bottom: 0; }
+  @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
+  .spacer { height: 20px; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .stat { border-left: 3px solid var(--line); padding-left: 10px; }
+  .stat .v { font-size: 1.25rem; font-weight: 600; }
+  .stat .k { font-size: 0.85rem; color: var(--muted); }
+  .stat.pass { border-left-color: var(--ok); }
+  .stat.fail { border-left-color: var(--bad); }
+
+  .table-wrap { overflow-x: auto; margin-top: 16px; max-height: 320px; overflow-y: auto; border: 1px solid var(--line); border-radius: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 7px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { position: sticky; top: 0; background: var(--surface); font-weight: 600; }
+  td.mono { font-family: "JetBrains Mono", Consolas, monospace; }
+  tr:last-child td { border-bottom: 0; }
+  .empty { color: var(--muted); padding: 16px 12px; }
+
+  dl.config { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 12px 0 0; font-size: 0.9rem; }
+  dl.config dt { color: var(--muted); }
+  dl.config dd { margin: 0; font-family: "JetBrains Mono", Consolas, monospace; word-break: break-all; }
+
+  @media (prefers-reduced-motion: reduce) { .tile { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>8-character code generator</h1>
+  <p class="lede">Each number maps to exactly one 8-character code, so codes never repeat and never need to be checked against stored data. Codes can also be turned back into their number.</p>
+
+  <section class="hero" aria-labelledby="issue-h">
+    <h2 id="issue-h">Issue codes</h2>
+    <p class="hint">The counter stands in for a database sequence. Each click takes the next number and encodes it.</p>
+    <div class="tiles" id="tiles" aria-live="polite" aria-label="Current code"></div>
+    <div class="row">
+      <button class="primary" id="issueBtn">Issue next code</button>
+      <button id="copyBtn">Copy code</button>
+      <button id="resetBtn">Reset counter</button>
+    </div>
+    <p class="result" id="issueMsg"></p>
+  </section>
+
+  <div class="grid2">
+    <section aria-labelledby="enc-h">
+      <h2 id="enc-h">Encode a number</h2>
+      <p class="hint">Any whole number from 0 to 218,340,105,584,895.</p>
+      <div class="row">
+        <div class="field">
+          <label for="encInput">Number</label>
+          <input id="encInput" class="mono" inputmode="numeric" value="12345">
+        </div>
+        <button class="primary" id="encBtn">Encode</button>
+      </div>
+      <p class="result" id="encMsg"></p>
+    </section>
+
+    <section aria-labelledby="dec-h">
+      <h2 id="dec-h">Decode a code</h2>
+      <p class="hint">8 characters, letters and digits only. Case matters.</p>
+      <div class="row">
+        <div class="field">
+          <label for="decInput">Code</label>
+          <input id="decInput" class="mono" maxlength="8" autocomplete="off" spellcheck="false">
+        </div>
+        <button class="primary" id="decBtn">Decode</button>
+      </div>
+      <p class="result" id="decMsg"></p>
+    </section>
+  </div>
+  <div class="spacer"></div>
+
+  <section aria-labelledby="batch-h">
+    <h2 id="batch-h">Uniqueness test</h2>
+    <p class="hint">Encodes a range of numbers, checks every code for duplicates, and decodes each one to confirm it returns the original number.</p>
+    <div class="row">
+      <div class="field">
+        <label for="batchStart">Start at</label>
+        <input id="batchStart" class="mono" inputmode="numeric" value="1">
+      </div>
+      <div class="field">
+        <label for="batchCount">How many (up to 500,000)</label>
+        <input id="batchCount" class="mono" inputmode="numeric" value="100000">
+      </div>
+      <button class="primary" id="batchBtn">Run test</button>
+    </div>
+    <div class="stats" id="batchStats"></div>
+    <div class="table-wrap" id="batchTableWrap" hidden>
+      <table>
+        <thead><tr><th>Number</th><th>Code</th><th>Decodes to</th></tr></thead>
+        <tbody id="batchBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="log-h">
+    <h2 id="log-h">Issued so far</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Number</th><th>Code</th></tr></thead>
+        <tbody id="logBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="cfg-h">
+    <h2 id="cfg-h">Settings in use</h2>
+    <p class="hint">Keep these fixed once codes go live. Changing any of them makes existing codes point to different numbers.</p>
+    <dl class="config" id="config"></dl>
+  </section>
+</main>
+
+<script>
+/* ---------- Core logic (copy this part into your project) ---------- */
+const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+const BASE = 62n;
+const LEN = 8;
+const N = BASE ** BigInt(LEN);      // 218,340,105,584,896
+const MULT = 999999999989n;         // prime, coprime with 62^8
+const OFFSET = 48271234567n;        // any value below N
+const MULT_INV = modInverse(MULT, N);
+const CHAR_INDEX = Object.fromEntries([...CHARSET].map((c, i) => [c, BigInt(i)]));
+
+function modInverse(a, m) {
+  let [oldR, r] = [a, m];
+  let [oldS, s] = [1n, 0n];
+  while (r !== 0n) {
+    const q = oldR / r;
+    [oldR, r] = [r, oldR - q * r];
+    [oldS, s] = [s, oldS - q * s];
+  }
+  return ((oldS % m) + m) % m;
+}
+
+function encodeId(id) {
+  const value = BigInt(id);
+  if (value < 0n || value >= N) {
+    throw new RangeError('Number must be between 0 and ' + (N - 1n).toLocaleString('en-US'));
+  }
+  let n = (value * MULT + OFFSET) % N;
+  let code = '';
+  for (let i = 0; i < LEN; i++) {
+    code = CHARSET[Number(n % BASE)] + code;
+    n /= BASE;
+  }
+  return code;
+}
+
+function decodeCode(code) {
+  if (!/^[A-Za-z0-9]{8}$/.test(code)) {
+    throw new Error('Code must be exactly 8 letters or digits');
+  }
+  let n = 0n;
+  for (const ch of code) {
+    n = n * BASE + CHAR_INDEX[ch];
+  }
+  const shifted = (((n - OFFSET) % N) + N) % N;
+  return Number((shifted * MULT_INV) % N);
+}
+/* ---------- End of core logic ---------- */
+
+/* ---------- Demo page wiring ---------- */
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n).toLocaleString('en-US');
+
+function store(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+}
+function load(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw === null ? fallback : JSON.parse(raw);
+  } catch (e) { return fallback; }
+}
+
+let counter = load('codegen-counter', 0);
+let issued = load('codegen-issued', []);
+
+function renderTiles(code) {
+  const tiles = $('tiles');
+  const chars = code ? [...code] : Array(LEN).fill('\u00B7');
+  tiles.innerHTML = '';
+  chars.forEach((ch, i) => {
+    const t = document.createElement('div');
+    t.className = 'tile';
+    t.textContent = ch;
+    tiles.appendChild(t);
+    if (code) {
+      setTimeout(() => t.classList.add('flip'), i * 30);
+      setTimeout(() => t.classList.remove('flip'), i * 30 + 180);
+    }
+  });
+  tiles.setAttribute('aria-label', code ? 'Current code ' + code : 'No code issued yet');
+}
+
+function renderLog() {
+  const body = $('logBody');
+  if (!issued.length) {
+    body.innerHTML = '<tr><td colspan="2" class="empty">Nothing issued yet. Use \u201CIssue next code\u201D above.</td></tr>';
+    return;
+  }
+  body.innerHTML = issued.slice().reverse()
+    .map(r => `<tr><td>${fmt(r.id)}</td><td class="mono">${r.code}</td></tr>`).join('');
+}
+
+function setMsg(el, html, kind) {
+  el.innerHTML = html;
+  el.className = 'result' + (kind ? ' ' + kind : '');
+}
+
+function parseWhole(str) {
+  const clean = String(str).replace(/[,\s_]/g, '');
+  if (!/^\d+$/.test(clean)) return null;
+  return BigInt(clean);
+}
+
+$('issueBtn').addEventListener('click', () => {
+  counter += 1;
+  const code = encodeId(counter);
+  issued.push({ id: counter, code });
+  if (issued.length > 1000) issued = issued.slice(-1000);
+  store('codegen-counter', counter);
+  store('codegen-issued', issued);
+  renderTiles(code);
+  renderLog();
+  setMsg($('issueMsg'), `Number ${fmt(counter)} issued as <strong>${code}</strong>.`, '');
+});
+
+$('copyBtn').addEventListener('click', async () => {
+  const last = issued[issued.length - 1];
+  if (!last) { setMsg($('issueMsg'), 'Issue a code first, then copy it.', 'bad'); return; }
+  try {
+    await navigator.clipboard.writeText(last.code);
+    setMsg($('issueMsg'), `Copied <strong>${last.code}</strong>.`, 'ok');
+  } catch (e) {
+    setMsg($('issueMsg'), 'Clipboard access was blocked. Select the code in the table below instead.', 'bad');
+  }
+});
+
+$('resetBtn').addEventListener('click', () => {
+  counter = 0;
+  issued = [];
+  store('codegen-counter', counter);
+  store('codegen-issued', issued);
+  renderTiles(null);
+  renderLog();
+  setMsg($('issueMsg'), 'Counter reset to 0.', '');
+});
+
+$('encBtn').addEventListener('click', () => {
+  const v = parseWhole($('encInput').value);
+  if (v === null) { setMsg($('encMsg'), 'Enter a whole number, digits only.', 'bad'); return; }
+  try {
+    const code = encodeId(v);
+    setMsg($('encMsg'), `${fmt(v)} encodes to <strong>${code}</strong>.`, 'ok');
+    $('decInput').value = code;
+  } catch (e) {
+    setMsg($('encMsg'), e.message + '.', 'bad');
+  }
+});
+$('encInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('encBtn').click(); });
+
+$('decBtn').addEventListener('click', () => {
+  const code = $('decInput').value.trim();
+  try {
+    const id = decodeCode(code);
+    setMsg($('decMsg'), `<strong>${code}</strong> decodes to ${fmt(id)}.`, 'ok');
+  } catch (e) {
+    setMsg($('decMsg'), e.message + '.', 'bad');
+  }
+});
+$('decInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('decBtn').click(); });
+
+$('batchBtn').addEventListener('click', () => {
+  const start = parseWhole($('batchStart').value);
+  const count = parseWhole($('batchCount').value);
+  const stats = $('batchStats');
+  if (start === null || count === null || count < 1n) {
+    stats.innerHTML = '<p class="result bad">Enter whole numbers for both fields, with at least 1 code to test.</p>';
+    return;
+  }
+  if (count > 500000n) {
+    stats.innerHTML = '<p class="result bad">Keep the test to 500,000 codes or fewer so the page stays responsive.</p>';
+    return;
+  }
+  if (start + count > N) {
+    stats.innerHTML = '<p class="result bad">That range goes past the largest number that fits in 8 characters.</p>';
+    return;
+  }
+
+  const btn = $('batchBtn');
+  btn.disabled = true;
+  btn.textContent = 'Running\u2026';
+  stats.innerHTML = '';
+
+  setTimeout(() => {
+    const total = Number(count);
+    const seen = new Set();
+    let duplicates = 0;
+    let roundTripFails = 0;
+    const sample = [];
+    const t0 = performance.now();
+
+    for (let i = 0n; i < count; i++) {
+      const id = start + i;
+      const code = encodeId(id);
+      if (seen.has(code)) duplicates++;
+      else seen.add(code);
+      const back = decodeCode(code);
+      if (BigInt(back) !== id) roundTripFails++;
+      if (sample.length < 50) sample.push({ id, code, back });
+    }
+
+    const ms = performance.now() - t0;
+    stats.innerHTML = `
+      <div class="stat"><div class="v">${fmt(total)}</div><div class="k">Codes generated</div></div>
+      <div class="stat ${duplicates ? 'fail' : 'pass'}"><div class="v">${fmt(duplicates)}</div><div class="k">Duplicates found</div></div>
+      <div class="stat ${roundTripFails ? 'fail' : 'pass'}"><div class="v">${fmt(roundTripFails)}</div><div class="k">Failed to decode back</div></div>
+      <div class="stat"><div class="v">${ms < 1000 ? Math.round(ms) + ' ms' : (ms / 1000).toFixed(2) + ' s'}</div><div class="k">Time taken</div></div>`;
+
+    $('batchBody').innerHTML = sample.map(r =>
+      `<tr><td>${fmt(r.id)}</td><td class="mono">${r.code}</td><td>${fmt(r.back)}</td></tr>`).join('') +
+      (total > 50 ? `<tr><td colspan="3" class="empty">Showing the first 50 of ${fmt(total)}.</td></tr>` : '');
+    $('batchTableWrap').hidden = false;
+
+    btn.disabled = false;
+    btn.textContent = 'Run test';
+  }, 30);
+});
+
+$('config').innerHTML = `
+  <dt>Characters</dt><dd>${CHARSET}</dd>
+  <dt>Length</dt><dd>${LEN}</dd>
+  <dt>Total codes</dt><dd>${fmt(N)}</dd>
+  <dt>MULT</dt><dd>${MULT}</dd>
+  <dt>OFFSET</dt><dd>${OFFSET}</dd>
+  <dt>MULT inverse</dt><dd>${MULT_INV}</dd>`;
+
+const last = issued[issued.length - 1];
+renderTiles(last ? last.code : null);
+renderLog();
+</script>
+</body>
+</html>
